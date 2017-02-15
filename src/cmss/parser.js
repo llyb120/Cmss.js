@@ -36,6 +36,10 @@ class Parser{
 					this.blockRight();
 					break;
 
+				case '[' : 
+					this.midBlodkLeft();
+					break;
+
 				case ':':
 					this.colon();
 					break;
@@ -52,6 +56,7 @@ class Parser{
 			this.moveNext();
 		}
 
+console.error(root.children)
 		return root;
 	}
 
@@ -77,11 +82,32 @@ class Parser{
 	}
 
 	blockLeft(){
-		if(this.current == NORMAL){
+		var str = this.buffer.join('').trim();
+		if(this.current == NORMAL && (str).length){
 			this.context = new Node(Node.Normal);
 			this.context.selector = this.getString();
 			this.getTop().addChild(this.context);
 			this.stack.push(this.context);
+		}
+		else if(str.length == 0){
+			this.moveNext();
+			var count = 1;
+			var char;
+			while(char = this.readChar()){
+				this.moveNext();
+
+				if(char == '{'){
+					count++;
+				}
+				else if(char == '}'){
+					if(--count == 0){
+						this.getTop().setContext(this.getString());
+						this.current = NORMAL;
+						break;
+					}
+				}
+				this.buffer.push(char);
+			}
 		}
 		else if(this.current == WAIT_ATTR_VALUE){
 			this.moveNext();
@@ -109,6 +135,34 @@ class Parser{
 		this.stack.pop();	
 	}
 
+	midBlodkLeft(){
+		if(this.buffer.join('').trim().length == 0 && this.current == WAIT_ATTR_VALUE){
+			this.moveNext();
+			var count = 1;
+			var char;
+			while(char = this.readChar()){
+				this.moveNext();
+
+				if(char == '['){
+					count++;
+				}
+				else if(char == ']'){
+					if(--count == 0){
+						this.getTop().setAttribute(this.attrName,[Node.Normal,'[' + this.getString() + ']']);
+						this.current = NORMAL;
+						break;
+					}
+				}
+				this.buffer.push(char);
+			}
+		}
+		else{
+			this.buffer.push(this.readChar());
+		}
+	}
+
+	
+
 	colon(){
 		if(this.current == NORMAL){
 			this.attrName = this.getString();
@@ -118,7 +172,7 @@ class Parser{
 
 	changeLine(){
 		if(this.current == WAIT_ATTR_VALUE){
-			this.getTop().setAttribute([Node.Normal,this.attrName,this.getString()]);
+			this.getTop().setAttribute(this.attrName,[Node.Normal,this.getString()]);
 			this.current = NORMAL;
 		}
 	}
